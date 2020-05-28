@@ -1,0 +1,184 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+
+<body>
+<h1>Temperature and heating monitoring</h1>
+<div id="DIAGS" style="visibility:hidden; overflow:hidden; height:10px;">
+<p id="TEMP_ARR">P</p>
+<p id="HEAT_ARR">P</p>
+<p id="DIAG">Diag</p>
+</div>
+<br>
+<a href=# onclick="dd=document.getElementById('DIAGS');dd.style.visibility='visible';dd.style.overflow='scroll';dd.style.height='auto';">Show diags</a><br>
+<table>
+<tr><td>
+TMAX: <span id="TMAX">0</span><br>
+</td></tr>
+<tr><td>
+<div id="scroller">
+    <div id="inner-scroller">
+<canvas id="myCanvas" width="1444" height="200"
+style="border:1px solid #c3c3c3;">
+Your browser does not support the canvas element.
+</canvas>
+    </div>
+</div>
+</td></tr>
+<tr><td>
+
+TMIN: <span id="TMIN">0</span>
+<br>
+</td></tr>
+</table>
+ACTUAL TEMP:<span id="TEMP">P</span><br>
+HEAT %:<span id="HEAT">P</span><br>
+HEAT ON: <span id="HEATON">P</span><br>
+HEAT OFF:<span id="HEATOFF">P</span><br>
+<script>
+
+var obj ="";
+
+function loadPropertyFile(url) {
+return $.ajax({
+    type: "GET",
+    url: url, 
+    dataType: "text",
+    success: function(response){
+        var obj = $.parseJSON(response);
+	document.getElementById("TEMP").innerHTML=obj["LAST_AVG"];
+    document.getElementById("HEATON").innerHTML=obj["HEAT_ON"];
+    document.getElementById("HEATOFF").innerHTML=obj["HEAT_OFF"];
+	document.getElementById("TEMP_ARR").innerHTML=JSON.stringify(obj["TEMP_ARR"]);
+	document.getElementById("HEAT_ARR").innerHTML=JSON.stringify(obj["HEAT_ARR"]);
+//        alert(obj["TEMP_ARR"]);
+    }
+});
+} //load...
+
+
+//loadPropertyFile("/temp.json");
+
+$.when( loadPropertyFile("/temp.json")).done(function(a1){
+    document.getElementById("DIAG").innerHTML=a1;
+    var obj = $.parseJSON(a1);
+    var temp_arr = JSON.stringify(obj["TEMP_ARR"]);//document.getElementById("TEMP_ARR").innerHTML;
+    var heat_arr = JSON.stringify(obj["HEAT_ARR"]);//document.getElementById("HEAT_ARR").innerHTML;
+//    alert(temp_arr);
+    //var heating = obj["HEATING"];
+    curtemp = obj["LAST_AVG"];
+
+    //temp_arr=JSON.stringify(temp_arr);
+    temp24h = temp_arr.split(",");
+    heat24h = heat_arr.split(",");
+    //process array to normalize range
+    var amax = -100000;
+    var amin = 100000;
+    var tt;
+    var i;
+    var theat = 0;
+    var ss="["+temp24h[1]+',';
+    for(i=2;i<=720;i++){
+        
+        if(Math.abs(parseInt(temp24h[i])-parseInt(temp24h[i-1]))<500)
+        {
+           tt=parseInt(temp24h[i]);
+	         if(tt>0){
+              if(tt<amin){amin=tt;}
+              if(tt>amax){amax=tt;}
+	         }
+         }  
+         ss=ss+tt+',';
+         if(heat24h[i]=='1'){theat = theat+1;}
+    };
+    amax=amax+100;
+  
+    document.getElementById("DIAG").innerHTML=ss;
+//    if (amax == amin){amax=amin + 1;};
+    
+    document.getElementById("TMIN").innerHTML = amin;
+    document.getElementById("TMAX").innerHTML = amax;
+
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, 1444, 202);
+    
+    var adif = amax -amin;
+
+    for(i=1;i<=720;i++){
+
+//heating
+	ctx.fillStyle = "#d63f08";
+	tt=parseInt(heat24h[i]);
+	tt=20*tt;
+	ctx.fillRect(2*i,190-tt,1,tt+5);
+//scale
+	if(i % 30 == 0){
+	    ctx.fillStyle = "#886666";
+	    ctx.fillRect(2*i+1,1,1,200);
+	}
+//temperature	
+	ctx.fillStyle = "#488cf9";
+	tt=parseInt(temp24h[i]);
+	if(tt!=0){
+	    tt=(tt-amin);
+	    tt=(tt*150)/adif;
+	    ctx.fillRect(2*i,160-tt,1,tt+1);
+	}
+    }
+    theat1=theat/720*60;
+    theat = theat * 2;
+    document.getElementById("HEAT").innerHTML = theat+' (avg '+theat1+'/per hour)';
+//    ctx.fillRect(10,10,10,15);
+}); //when
+
+
+</script>
+
+<script type="text/javascript">
+
+    function scrollDiv(dir, px) {
+        var scroller = document.getElementById('scroller');
+        if (dir == 'l') {
+            scroller.scrollLeft -= px;
+        }
+        else if (dir == 'r') {
+            scroller.scrollLeft += px;
+        }
+    }
+    
+    
+</script>
+
+<style type="text/css">
+    #scroller {
+        width: 50%;
+        height: 220px;
+        border: 1px solid black;
+        overflow-x: scroll;
+        overflow-y: hidden;
+        margin: 0 auto;
+        float: left; 
+        
+    }
+    #inner-scroller {
+        width: 50%;
+        height: 200px;
+    }
+</style>
+
+
+<br>
+<br>
+
+<script>
+scrollDiv('r',1440);
+</script>
+    
+    
+
+</body>
+</html>
