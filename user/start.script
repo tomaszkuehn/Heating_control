@@ -1,0 +1,2 @@
+/usr/bin/nohup /usr/bin/python 4w.py > 1w.log &
+
