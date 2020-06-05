@@ -19,6 +19,7 @@ temp_on	 = 2000
 temp_off = 2030
 heating = 0
 temp_1w = 0
+periodic_run_interval = 240 # in minutes
 periodic_run = 0
 
 #serial port to send messages over wireless
@@ -204,7 +205,8 @@ while True:
 #run every three hours
 	hh = 0
 	if(heating == 0):
-	    for i in range (630,720):
+	    ppi = 720 - periodic_run_interval / 2;
+	    for i in range (ppi,720):
 		hh = hh + heat_arr[i]
 	    if ( hh == 0 ):
 		periodic_run = 1
