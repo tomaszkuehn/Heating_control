@@ -9,6 +9,11 @@ import threading
 from threading import Thread
 import Queue
 
+pipe_path = "/tmp/heating_pipe"
+if not os.path.exists(pipe_path):
+    os.mkfifo(pipe_path)
+pipe_fd = os.open(pipe_path, os.O_RDONLY | os.O_NONBLOCK)
+
 os.system('modprobe w1-gpio')
 os.system('modprobe w1-therm')
 
@@ -89,7 +94,8 @@ def heating_switch(heating):
 	    packet.append(0xFA)
 
 	print binascii.hexlify(packet)
-	ser.write(packet)
+#comment the line below to avoid any messages sent
+#	ser.write(packet)
 
 
 #heating_switch(0)
@@ -140,6 +146,12 @@ while True:
     temp_on  = hour_arr[systime.tm_hour][0]
     temp_off = hour_arr[systime.tm_hour][1]
     print temp_on,"-",temp_off
+#check command over pipe
+    with os.fdopen(pipe_fd) as pipe:
+	message = pipe.read()
+	if message:
+	    print("Received command")
+
 #read 1-wire    
     t = Thread(target=read_temp, args=(1, my_queue))
     t.daemon = True
