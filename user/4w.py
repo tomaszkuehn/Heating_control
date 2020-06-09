@@ -137,6 +137,7 @@ time.sleep(5)
 minute = 0
 my_queue = Queue.Queue()
 seconds = round(time.time())
+pipe = os.fdopen(pipe_fd)
 
 while True:
     systime = time.localtime(time.time())
@@ -147,10 +148,10 @@ while True:
     temp_off = hour_arr[systime.tm_hour][1]
     print temp_on,"-",temp_off
 #check command over pipe
-    with os.fdopen(pipe_fd) as pipe:
-	message = pipe.read()
-	if message:
-	    print("Received command")
+#to send command use: echo "command" > /tmp/heating_pipe
+    message = pipe.read()
+    if message:
+	print("Received command: '%s'" % message)
 
 #read 1-wire    
     t = Thread(target=read_temp, args=(1, my_queue))
