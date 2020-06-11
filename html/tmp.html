@@ -2,42 +2,108 @@
 <html>
 <head>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<style> 
+.button {
+    display: inline-block;
+    text-align: center;
+    vertical-align: middle;
+    padding: 7px 24px;
+    border: 1px solid #1a1111;
+    border-radius: 7px;
+    background: #825555;
+    background: -webkit-gradient(linear, left top, left bottom, from(#825555), to(#1a1111));
+    background: -moz-linear-gradient(top, #825555, #1a1111);
+    background: linear-gradient(to bottom, #825555, #1a1111);
+    -webkit-box-shadow: #1f1414 0px 0px 10px 0px;
+    -moz-box-shadow: #1f1414 0px 0px 10px 0px;
+    box-shadow: #1f1414 0px 0px 10px 0px;
+    text-shadow: #0d0909 1px 1px 1px;
+    font: normal normal bold 20px tahoma;
+    color: #ffffff;
+    text-decoration: none;
+    margin-right: 20px;
+}
+.button:hover,
+.button:focus {
+    background: #9c6666;
+    background: -webkit-gradient(linear, left top, left bottom, from(#9c6666), to(#1f1414));
+    background: -moz-linear-gradient(top, #9c6666, #1f1414);
+    background: linear-gradient(to bottom, #9c6666, #1f1414);
+    color: #ffffff;
+    text-decoration: none;
+}
+.button:active {
+    background: #1a1111;
+    background: -webkit-gradient(linear, left top, left bottom, from(#1a1111), to(#1a1111));
+    background: -moz-linear-gradient(top, #1a1111, #1a1111);
+    background: linear-gradient(to bottom, #1a1111, #1a1111);
+}
+</style>
 </head>
 
 <body>
-<h1>Temperature and heating monitoring</h1>
-<div id="DIAGS" style="visibility:hidden; overflow:hidden; height:10px;">
-<p id="TEMP_ARR">P</p>
-<p id="HEAT_ARR">P</p>
-<p id="DIAG">Diag</p>
-</div>
-<br>
-<a href=# onclick="dd=document.getElementById('DIAGS');dd.style.visibility='visible';dd.style.overflow='scroll';dd.style.height='auto';">Show diags</a><br>
-<table>
-<tr><td>
-TMAX: <span id="TMAX">0</span><br>
-</td></tr>
-<tr><td>
-<div id="scroller">
-    <div id="inner-scroller">
-<canvas id="myCanvas" width="1444" height="200"
-style="border:1px solid #c3c3c3;">
-Your browser does not support the canvas element.
-</canvas>
-    </div>
-</div>
-</td></tr>
-<tr><td>
 
-TMIN: <span id="TMIN">0</span>
+<h1>Temperature monitoring and heating control</h1>
+
+<div id="DIAGS" style="visibility:hidden; overflow:hidden; height:10px;">
+  <p id="TEMP_ARR">P</p>
+  <p id="HEAT_ARR">P</p>
+  <p id="DIAG">Diag</p>
+</div>
 <br>
-</td></tr>
+
+<a href=# onclick="dd=document.getElementById('DIAGS');dd.style.visibility='visible';dd.style.overflow='scroll';dd.style.height='auto';">Show diags</a><br>
+<br>
+
+<input type=button class=button value="TEMP UP" onclick='message("#2 1")'>
+<input type=button class=button value="PAUSE" onclick='message("#2 0")'>
+<input type=button class=button value="HEATING OFF" onclick='message("#1 0")'>
+<input type=button class=button value="HEATING ON" onclick='message("#1 1")'>
+
+<br>
+<br>
+
+<table>
+  <tr><td>
+  TMAX: <span id="TMAX">0</span><br>
+  </td></tr>
+  <tr><td>
+  <div id="scroller">
+      <div id="inner-scroller">
+  <canvas id="myCanvas" width="1444" height="200"
+  style="border:1px solid #c3c3c3;">
+  Your browser does not support the canvas element.
+  </canvas>
+      </div>
+  </div>
+  </td></tr>
+  <tr><td>
+  
+  TMIN: <span id="TMIN">0</span>
+  <br>
+  </td></tr>
 </table>
+
 ACTUAL TEMP:<span id="TEMP">P</span><br>
 HEAT %:<span id="HEAT">P</span><br>
 HEAT ON: <span id="HEATON">P</span><br>
 HEAT OFF:<span id="HEATOFF">P</span><br>
+
 <script>
+
+function message(arg) {
+    var data = 'data='+arg;
+	var xmlhttp = new XMLHttpRequest();
+	xmlhttp.onreadystatechange=function(){
+	  if (xmlhttp.readyState==4 && xmlhttp.status==200){
+	    //response.innerHTML='<a href="files/'+xmlhttp.responseText+'.txt">'+xmlhttp.responseText+'.txt</a>';
+	  }
+	}
+	xmlhttp.open("POST","cmd.php",true);
+        //Must add this request header to XMLHttpRequest request for POST
+        xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	xmlhttp.send(data);
+}
 
 var obj ="";
 

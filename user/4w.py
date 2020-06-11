@@ -21,6 +21,9 @@ heating = 0
 temp_1w = 0
 periodic_run_interval = 240 # in minutes
 periodic_run = 0
+manual_run   = 0
+manual_pause = 0
+manual_stop  = 0
 
 #configure serial port to send messages
 ser = serial.Serial (
@@ -97,6 +100,21 @@ def heating_switch(heating):
 
 #exit()
 
+def process_msg(msg):
+    global manual_run
+    global manual_stop
+    global manual_pause
+    m = msg.split()
+    if (m[0] == '2'):
+        if (m[1] == '1'):
+            manual_run = 10
+        if (m[1] == '0'):
+            manual_pause = 10
+    if (m[0] == '1'):
+        if (m[1] == '1'):
+            manual_stop = 0
+        if (m[1] == '0'):
+            manual_stop = 1
 
 
 temp_arr     = [];
@@ -145,18 +163,12 @@ pipe = os.fdopen(pipe_fd)
 
 while True:
     systime = time.localtime(time.time())
-    print systime.tm_hour,':',systime.tm_min, " While loop..." 
+    print systime.tm_hour,':',systime.tm_min, " While loop...", manual_run
     if systime.tm_min == 0:
         read_hour_arr()
     temp_on  = hour_arr[systime.tm_hour][0]
     temp_off = hour_arr[systime.tm_hour][1]
     print temp_on,"-",temp_off
-  
-#check command over pipe
-#to send command use: echo "command" > /tmp/heating_pipe
-    message = pipe.read()
-    if message:
-        print("Received command: '%s'" % message)
 
 #read 1-wire    
     t = Thread(target=read_temp, args=(1, my_queue))
@@ -198,7 +210,7 @@ while True:
         temp_avg = round(temp_avg)
         print("(%d): AVG: %d " % (round(time.time()),temp_avg))
 
-#drive heating
+#drive heating based on temperature reading
         if temp_avg <= temp_on:
             heating = 1
     
@@ -234,10 +246,16 @@ while True:
                 hh = hh + heat_arr[i]
             if ( hh >= 4 ):
                 periodic_run = 0
-        heating = heating | periodic_run
-    
+
+                            
+        heating = heating or periodic_run or manual_run
+        if(manual_pause or manual_stop):
+            heating = 0
+        if(heating > 1):
+            heating = 1
         heating_switch(heating)
-    
+
+#every two minutes    
         if minute == 12: #shift data in array
             minute = 0
             temp_arr.pop(0)
@@ -246,6 +264,14 @@ while True:
             if((heating!=0) and (heating!=1)):
                 heating = 0
             heat_arr.append(heating)
+            
+#every minute
+        if minute == 6:
+        #manual override
+            if(manual_run > 0):
+                manual_run = manual_run - 1 
+            if(manual_pause > 0):
+                manual_pause = manual_pause -1               
 
 #create www
         ff = open("/var/www/html/temp.json","w+")
@@ -268,7 +294,16 @@ while True:
         print "\n"
         sys.stdout.flush()
             
-        while(round(time.time())-seconds<10):
+        while(round(time.time())-seconds<1):#10):
+            #check command over pipe
+            #to send command use: echo "command" > /tmp/heating_pipe
+            message = pipe.read()
+            if message:
+                print("Received command(s): '%s'" % message)
+                msgs = message.split('#')
+                for msg in msgs:
+                    if msg:
+                        process_msg(msg)
             time.sleep(1)
         seconds = round(time.time())
         minute = minute + 1
