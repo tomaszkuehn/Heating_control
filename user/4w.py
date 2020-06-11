@@ -15,14 +15,17 @@ os.system('modprobe w1-therm')
 
 temp_sensor1 = '/sys/bus/w1/devices/28-0000031bd290/w1_slave'
 temp_sensor = '/sys/bus/w1/devices/28-0000031bc16f/w1_slave'
-temp_on	 = 2000
+temp_on  = 2000
 temp_off = 2030
 heating = 0
 temp_1w = 0
 periodic_run_interval = 240 # in minutes
 periodic_run = 0
+manual_run   = 0
+manual_pause = 0
+manual_stop  = 0
 
-#serial port to send messages over wireless
+#configure serial port to send messages
 ser = serial.Serial (
     port='/dev/ttyAMA0',
     baudrate = 9600,
@@ -60,42 +63,58 @@ def read_temp(num, out_queue):
         temp_c = float(temp_string) / 1000.0
 #        temp_f = temp_c * 9.0 / 5.0 + 32.0
         #return temp_c
-	print "Read temp TC:%f\n" % temp_c
-	out_queue.put(temp_c)
+        print "Read temp TC:%f\n" % temp_c
+        out_queue.put(temp_c)
     
 
     
 def heating_switch(heating):
-	print "HSW:%d " % heating
+   print "HSW:%d " % heating
 #now send over serial
-	packet = bytearray()
-	if (heating == 1):
-	    packet.append(0x01)
-	    packet.append(0x05)
-	    packet.append(0x00)
-	    packet.append(0x00)
-	    packet.append(0xFF)
-	    packet.append(0x00)
-	    packet.append(0x8C)
-	    packet.append(0x3A)
-	if (heating == 0):
-	    packet.append(0x01)
-	    packet.append(0x05)
-	    packet.append(0x00)
-	    packet.append(0x01)
-	    packet.append(0xFF)
-	    packet.append(0x00)
-	    packet.append(0xDD)
-	    packet.append(0xFA)
+   packet = bytearray()
+   if (heating == 1):
+      packet.append(0x01)
+      packet.append(0x05)
+      packet.append(0x00)
+      packet.append(0x00)
+      packet.append(0xFF)
+      packet.append(0x00)
+      packet.append(0x8C)
+      packet.append(0x3A)
+   if (heating == 0):
+      packet.append(0x01)
+      packet.append(0x05)
+      packet.append(0x00)
+      packet.append(0x01)
+      packet.append(0xFF)
+      packet.append(0x00)
+      packet.append(0xDD)
+      packet.append(0xFA)
 
-	print binascii.hexlify(packet)
-	ser.write(packet)
+   print binascii.hexlify(packet)
+#comment the line below to avoid any messages sent
+#   ser.write(packet)
 
 
 #heating_switch(0)
 
 #exit()
 
+def process_msg(msg):
+    global manual_run
+    global manual_stop
+    global manual_pause
+    m = msg.split()
+    if (m[0] == '2'):
+        if (m[1] == '1'):
+            manual_run = 10
+        if (m[1] == '0'):
+            manual_pause = 10
+    if (m[0] == '1'):
+        if (m[1] == '1'):
+            manual_stop = 0
+        if (m[1] == '0'):
+            manual_stop = 1
 
 
 temp_arr     = [];
@@ -132,14 +151,25 @@ minute = 0
 my_queue = Queue.Queue()
 seconds = round(time.time())
 
+#define system pipe to receive commands
+pipe_path = "/tmp/heating_pipe"
+if not os.path.exists(pipe_path):
+    os.mkfifo(pipe_path)
+os.chmod(pipe_path, 0o777)    
+pipe_fd = os.open(pipe_path, os.O_RDONLY | os.O_NONBLOCK)
+pipe = os.fdopen(pipe_fd)
+
+# MAIN LOOP #
+
 while True:
     systime = time.localtime(time.time())
-    print systime.tm_hour,':',systime.tm_min, " While loop..." 
+    print systime.tm_hour,':',systime.tm_min, " While loop...", manual_run
     if systime.tm_min == 0:
         read_hour_arr()
     temp_on  = hour_arr[systime.tm_hour][0]
     temp_off = hour_arr[systime.tm_hour][1]
     print temp_on,"-",temp_off
+
 #read 1-wire    
     t = Thread(target=read_temp, args=(1, my_queue))
     t.daemon = True
@@ -160,74 +190,88 @@ while True:
     while not my_queue.empty():
         tt = my_queue.get()
 #current temp in tt
-	if (tt < -1000):
-	    tt = temp_avg_arr[0]
-	if (tt > 4000):
-	    tt = temp_avg_arr[0]
-	print(tt)
+        if (tt < -1000):
+            tt = temp_avg_arr[0]
+        if (tt > 4000):
+            tt = temp_avg_arr[0]
+        print(tt)
 #update avg temp array
-	temp_avg_arr.pop(0)
-	temp_avg_arr.append(tt)
+        temp_avg_arr.pop(0)
+        temp_avg_arr.append(tt)
 
-	print temp_avg_arr
+        print temp_avg_arr
 
 #calculate average temperature over last minute
-	temp_avg = 0
-	for i in range (0, 12):
-	    temp_avg = temp_avg + temp_avg_arr[i]
-	temp_avg = temp_avg/12
-	temp_avg = temp_avg*100
-	temp_avg = round(temp_avg)
-	print("(%d): AVG: %d " % (round(time.time()),temp_avg))
+        temp_avg = 0
+        for i in range (0, 12):
+            temp_avg = temp_avg + temp_avg_arr[i]
+        temp_avg = temp_avg/12
+        temp_avg = temp_avg*100
+        temp_avg = round(temp_avg)
+        print("(%d): AVG: %d " % (round(time.time()),temp_avg))
 
-#drive heating
-	if temp_avg <= temp_on:
-	    heating = 1
-
-	if temp_avg >= temp_off:
-	    heating = 0
+#drive heating based on temperature reading
+        if temp_avg <= temp_on:
+            heating = 1
+    
+        if temp_avg >= temp_off:
+            heating = 0
 
 #check heating rule to avoid continuous usage
-	hh = 0
-	if(heating - heat_arr[719] == 1): #heating switched on
-	    for i in range (705,720):
-		hh = hh + heat_arr[i]
-		if ( hh > 0 ):
-		    heating = 0
-		    print("HH:%d Heating postponed - over usage\n" % hh)
-	if( heat_arr[719] == 1):	#heating was on
-	    for i in range (698,720):
-		hh = hh + heat_arr[i]
-		if ( hh > 19 ):
-		    heating = 0
-		    print("HH:%d Heating stopped - over usage\n" % hh)
+        hh = 0
+        if(heating - heat_arr[719] == 1): #heating switched on
+            for i in range (705,720):
+                hh = hh + heat_arr[i]
+                if ( hh > 0 ):
+                    heating = 0
+                    print("HH:%d Heating postponed - over usage\n" % hh)
+        if( heat_arr[719] == 1):	#heating was on
+            for i in range (698,720):
+                hh = hh + heat_arr[i]
+                if ( hh > 19 ):
+                    heating = 0
+                    print("HH:%d Heating stopped - over usage\n" % hh)
 
-#run every three hours
-	hh = 0
-	if(heating == 0):
-	    ppi = 720 - periodic_run_interval / 2;
-	    for i in range (ppi,720):
-		hh = hh + heat_arr[i]
-	    if ( hh == 0 ):
-		periodic_run = 1
-	hh = 0
-	if ( periodic_run == 1 ):
-	    for i in range (714,720):
-		hh = hh + heat_arr[i]
-	    if ( hh >= 4 ):
-		periodic_run = 0
-	heating = heating | periodic_run
+#run heating periodically
+        hh = 0
+        if(heating == 0):
+            ppi = 720 - periodic_run_interval / 2;
+            for i in range (ppi,720):
+                hh = hh + heat_arr[i]
+            if ( hh == 0 ):
+                periodic_run = 1
+        hh = 0
+        if ( periodic_run == 1 ):
+            for i in range (714,720):
+                hh = hh + heat_arr[i]
+            if ( hh >= 4 ):
+                periodic_run = 0
 
-	heating_switch(heating)
+                            
+        heating = heating or periodic_run or manual_run
+        if(manual_pause or manual_stop):
+            heating = 0
+        if(heating > 1):
+            heating = 1
+        heating_switch(heating)
 
-	if minute == 12: #shift data in array
-	    minute = 0
-	    temp_arr.pop(0)
-	    temp_arr.append(temp_avg)
-	    heat_arr.pop(0)
-	    if((heating!=0) and (heating!=1)):
-		heating = 0
-	    heat_arr.append(heating)
+#every two minutes    
+        if minute == 12: #shift data in array
+            minute = 0
+            temp_arr.pop(0)
+            temp_arr.append(temp_avg)
+            heat_arr.pop(0)
+            if((heating!=0) and (heating!=1)):
+                heating = 0
+            heat_arr.append(heating)
+            
+#every minute
+        if minute == 6:
+        #manual override
+            if(manual_run > 0):
+                manual_run = manual_run - 1 
+            if(manual_pause > 0):
+                manual_pause = manual_pause -1               
 
 #create www
         ff = open("/var/www/html/temp.json","w+")
@@ -246,14 +290,23 @@ while True:
         ff.write("\n}\n")
         ff.write
         ff.close
-
-	print "\n"
-	sys.stdout.flush()
-        
-	while(round(time.time())-seconds<10):
-	    time.sleep(1)
-	seconds = round(time.time())
-	minute = minute + 1
+    
+        print "\n"
+        sys.stdout.flush()
+            
+        while(round(time.time())-seconds<1):#10):
+            #check command over pipe
+            #to send command use: echo "command" > /tmp/heating_pipe
+            message = pipe.read()
+            if message:
+                print("Received command(s): '%s'" % message)
+                msgs = message.split('#')
+                for msg in msgs:
+                    if msg:
+                        process_msg(msg)
+            time.sleep(1)
+        seconds = round(time.time())
+        minute = minute + 1
 
 
 
