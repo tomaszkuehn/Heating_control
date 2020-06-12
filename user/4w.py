@@ -294,9 +294,9 @@ while True:
         print "\n"
         sys.stdout.flush()
             
-        while(round(time.time())-seconds<1):#10):
-            #check command over pipe
-            #to send command use: echo "command" > /tmp/heating_pipe
+        while True:
+            # check command over pipe
+            # to send command use: echo "command" > /tmp/heating_pipe
             message = pipe.read()
             if message:
                 print("Received command(s): '%s'" % message)
@@ -304,7 +304,11 @@ while True:
                 for msg in msgs:
                     if msg:
                         process_msg(msg)
-            time.sleep(1)
+            time.sleep(0.2)
+            # replace the condition below for accelerated testing
+            # if True:
+            if (round(time.time()) - seconds >= 10):
+                break;
         seconds = round(time.time())
         minute = minute + 1
 
