@@ -93,7 +93,7 @@ def heating_switch(heating):
 
    print binascii.hexlify(packet)
 #comment the line below to avoid any messages sent
-#   ser.write(packet)
+   ser.write(packet)
 
 
 #heating_switch(0)
@@ -150,6 +150,7 @@ time.sleep(5)
 minute = 0
 my_queue = Queue.Queue()
 seconds = round(time.time())
+read_hour = 0
 
 #define system pipe to receive commands
 pipe_path = "/tmp/heating_pipe"
@@ -164,8 +165,11 @@ pipe = os.fdopen(pipe_fd)
 while True:
     systime = time.localtime(time.time())
     print systime.tm_hour,':',systime.tm_min, " While loop...", manual_run
-    if systime.tm_min == 0:
+    if ((systime.tm_min%5 == 0) && (read_hour == 0)):
         read_hour_arr()
+        read_hour = 1
+    if (systime.tm_min%5 != 0):
+        read_hour = 0
     temp_on  = hour_arr[systime.tm_hour][0]
     temp_off = hour_arr[systime.tm_hour][1]
     print temp_on,"-",temp_off
