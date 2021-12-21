@@ -165,7 +165,7 @@ pipe = os.fdopen(pipe_fd)
 while True:
     systime = time.localtime(time.time())
     print systime.tm_hour,':',systime.tm_min, " While loop...", manual_run
-    if ((systime.tm_min%5 == 0) && (read_hour == 0)):
+    if ((systime.tm_min%5 == 0) and (read_hour == 0)):
         read_hour_arr()
         read_hour = 1
     if (systime.tm_min%5 != 0):
