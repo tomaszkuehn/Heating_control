@@ -12,18 +12,23 @@ import Queue
 os.system('modprobe w1-gpio')
 os.system('modprobe w1-therm')
 
-
+#configuration parameters
 temp_sensor1 = '/sys/bus/w1/devices/28-0000031bd290/w1_slave'
 temp_sensor = '/sys/bus/w1/devices/28-0000031bc16f/w1_slave'
+periodic_run_interval = 240 # in minutes
+booster_delay = 48 #in ticks, set 0 to disable
+
+#blobal variables
+tick = 0            # 1tick = 10sec
 temp_on  = 2000
 temp_off = 2030
 heating = 0
 temp_1w = 0
-periodic_run_interval = 240 # in minutes
 periodic_run = 0
 manual_run   = 0
 manual_pause = 0
-manual_stop  = 0
+manual_stop  = 0 
+booster      = 0
 
 #configure serial port to send messages
 ser = serial.Serial (
@@ -69,7 +74,6 @@ def read_temp(num, out_queue):
 
     
 def heating_switch(heating):
-   print "HSW:%d " % heating
 #now send over serial
    packet = bytearray()
    if (heating == 1):
@@ -147,7 +151,6 @@ read_hour_arr()
 print hour_arr
 time.sleep(5)
     
-minute = 0
 my_queue = Queue.Queue()
 seconds = round(time.time())
 read_hour = 0
@@ -164,7 +167,8 @@ pipe = os.fdopen(pipe_fd)
 
 while True:
     systime = time.localtime(time.time())
-    print systime.tm_hour,':',systime.tm_min, " While loop...", manual_run
+    print systime.tm_hour,':',systime.tm_min, " ", tick, " While loop..."
+    print "Manual RUN:", manual_run, " Manual STOP:", manual_stop, " Periodic RUN:", periodic_run, " PAUSE:", manual_pause, " Booster:", booster
     if ((systime.tm_min%5 == 0) and (read_hour == 0)):
         read_hour_arr()
         read_hour = 1
@@ -172,7 +176,7 @@ while True:
         read_hour = 0
     temp_on  = hour_arr[systime.tm_hour][0]
     temp_off = hour_arr[systime.tm_hour][1]
-    print temp_on,"-",temp_off
+    print "Temp range ", temp_on,"-",temp_off
 
 #read 1-wire    
     t = Thread(target=read_temp, args=(1, my_queue))
@@ -219,6 +223,8 @@ while True:
             heating = 1
     
         if temp_avg >= temp_off:
+            if heating == 1 and booster == 0:
+                booster =  booster_delay
             heating = 0
 
 #check heating rule to avoid continuous usage
@@ -251,17 +257,24 @@ while True:
             if ( hh >= 4 ):
                 periodic_run = 0
 
+#check booster
+        if booster > 0:
+            booster = booster - 1
+        if booster == 2:
+            heating = 1
+        if booster == 1:
+            heating = 0
                             
         heating = heating or periodic_run or manual_run
         if(manual_pause or manual_stop):
             heating = 0
         if(heating > 1):
             heating = 1
+        print "Heating switch:%d " % heating
         heating_switch(heating)
 
 #every two minutes    
-        if minute == 12: #shift data in array
-            minute = 0
+        if tick%12 == 0: #shift data in array
             temp_arr.pop(0)
             temp_arr.append(temp_avg)
             heat_arr.pop(0)
@@ -270,7 +283,7 @@ while True:
             heat_arr.append(heating)
             
 #every minute
-        if minute == 6:
+        if tick%6 == 0:
         #manual override
             if(manual_run > 0):
                 manual_run = manual_run - 1 
@@ -314,7 +327,7 @@ while True:
             if (round(time.time()) - seconds >= 10):
                 break;
         seconds = round(time.time())
-        minute = minute + 1
+        tick = tick + 1
 
 
 
