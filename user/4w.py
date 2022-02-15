@@ -141,8 +141,9 @@ def read_hour_arr():
     f = open("/user/hour.txt","r")
     f1 = f.readlines()
     for x in f1:
-        utime,uon,uoff = x.split(",") 
-        hour_arr[int(utime)]=[int(uon), int(uoff)] 
+        if x[0] != '#':
+            utime,uon,uoff = x.split(",") 
+            hour_arr[int(utime)]=[int(uon), int(uoff)] 
     
     print hour_arr[7][0]," ",hour_arr[7][1]+1
     
