@@ -28,6 +28,7 @@ periodic_run = 0
 manual_run   = 0
 manual_pause = 0
 manual_stop  = 0 
+temp_shift = 0
 booster      = 0
 
 #configure serial port to send messages
@@ -108,6 +109,7 @@ def process_msg(msg):
     global manual_run
     global manual_stop
     global manual_pause
+    global temp_shift
     m = msg.split()
     if (m[0] == '2'):
         if (m[1] == '1'):
@@ -119,6 +121,17 @@ def process_msg(msg):
             manual_stop = 0
         if (m[1] == '0'):
             manual_stop = 1
+    if (m[0] == '3'):
+        if (m[1] == '1'):
+            temp_shift = temp_shift + 50
+        if (m[1] == '0'):
+            temp_shift = temp_shift - 50
+        if (m[1] == '2'):
+            temp_shift = 0
+    if (temp_shift > 200):
+        temp_shift = 200
+    if (temp_shift < -200):
+        temp_shift = -200
 
 
 temp_arr     = [];
@@ -175,8 +188,8 @@ while True:
         read_hour = 1
     if (systime.tm_min%5 != 0):
         read_hour = 0
-    temp_on  = hour_arr[systime.tm_hour][0]
-    temp_off = hour_arr[systime.tm_hour][1]
+    temp_on  = hour_arr[systime.tm_hour][0] + temp_shift
+    temp_off = hour_arr[systime.tm_hour][1] + temp_shift
     print "Temp range ", temp_on,"-",temp_off
 
 #read 1-wire    
@@ -304,7 +317,8 @@ while True:
         ff.write("],")
         ff.write("\"LAST_AVG\":%d," % temp_avg)
         ff.write("\"HEAT_ON\":%d," % temp_on)
-        ff.write("\"HEAT_OFF\":%d" % temp_off)
+        ff.write("\"HEAT_OFF\":%d," % temp_off)
+        ff.write("\"TEMP_SHIFT\":%d" % temp_shift)
         ff.write("\n}\n")
         ff.write
         ff.close

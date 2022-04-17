@@ -55,8 +55,12 @@
 <a href=# onclick="dd=document.getElementById('DIAGS');dd.style.visibility='visible';dd.style.overflow='scroll';dd.style.height='auto';">Show diags</a><br>
 <br>
 
-<input type=button class=button value="TEMP UP" onclick='message("#2 1")'>
-<input type=button class=button value="PAUSE" onclick='message("#2 0")'>
+<input type=button class=button value="TEMP SHIFT +" onclick='message("#3 1")'>
+<input type=button class=button value="TEMP SHIFT -" onclick='message("#3 0")'>
+<input type=button class=button value="TEMP SHIFT 0" onclick='message("#3 2")'>
+<br><br>
+<input type=button class=button value="5 Min ON" onclick='message("#2 1")'>
+<input type=button class=button value="5 Min PAUSE" onclick='message("#2 0")'>
 <input type=button class=button value="HEATING OFF" onclick='message("#1 0")'>
 <input type=button class=button value="HEATING ON" onclick='message("#1 1")'>
 
@@ -88,6 +92,7 @@ ACTUAL TEMP:<span id="TEMP">P</span><br>
 HEAT %:<span id="HEAT">P</span><br>
 HEAT ON: <span id="HEATON">P</span><br>
 HEAT OFF:<span id="HEATOFF">P</span><br>
+TEMP SHIFT:<span id="TEMPSHIFT">P</span><br>
 
 <script>
 
@@ -117,6 +122,7 @@ return $.ajax({
 	document.getElementById("TEMP").innerHTML=obj["LAST_AVG"];
     document.getElementById("HEATON").innerHTML=obj["HEAT_ON"];
     document.getElementById("HEATOFF").innerHTML=obj["HEAT_OFF"];
+    document.getElementById("TEMPSHIFT").innerHTML=obj["TEMP_SHIFT"];
 	document.getElementById("TEMP_ARR").innerHTML=JSON.stringify(obj["TEMP_ARR"]);
 	document.getElementById("HEAT_ARR").innerHTML=JSON.stringify(obj["HEAT_ARR"]);
 //        alert(obj["TEMP_ARR"]);
