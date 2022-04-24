@@ -143,7 +143,7 @@ for i in range (0,720):
 
 temp_avg_arr = []
 for i in range (0,12):
-    temp_avg_arr.append(0)
+    temp_avg_arr.append(-10000)
 
 hour_arr = []
 for i in range (0,24):
@@ -227,7 +227,10 @@ while True:
         temp_avg = 0
         for i in range (0, 12):
             temp_avg = temp_avg + temp_avg_arr[i]
-        temp_avg = temp_avg/12
+        if(temp_avg_arr[0] > -10000):
+            temp_avg = temp_avg/12
+        else:
+            temp_avg = temp_avg_arr[11]
         temp_avg = temp_avg*100
         temp_avg = round(temp_avg)
         print("(%d): AVG: %d " % (round(time.time()),temp_avg))
